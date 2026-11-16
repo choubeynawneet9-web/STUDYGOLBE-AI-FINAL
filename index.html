@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyGlobe AI — Study Abroad & Course Finder</title>
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --text: #1b2437;
+    --muted: #5d6b86;
+    --primary: #3b5bdb;
+    --primary-dark: #2c46b3;
+    --accent: #12b886;
+    --border: #dde3f0;
+    --warn-bg: #fff6e0;
+    --warn-border: #f2c94c;
+    --err: #c92a2a;
+    --shadow: 0 6px 24px rgba(30, 50, 110, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1424;
+      --card: #171e33;
+      --text: #e8ecf8;
+      --muted: #98a4c2;
+      --primary: #6c8cff;
+      --primary-dark: #8aa2ff;
+      --accent: #38d9a9;
+      --border: #2a3454;
+      --warn-bg: #2a2410;
+      --warn-border: #7a6420;
+      --err: #ff8787;
+      --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  header {
+    background: linear-gradient(135deg, #3b5bdb, #7048e8 60%, #12b886);
+    color: #fff;
+    padding: 44px 16px 56px;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 8px; font-size: clamp(1.8rem, 5vw, 2.6rem); letter-spacing: -0.5px; }
+  header p { margin: 0 auto; max-width: 620px; opacity: 0.92; font-size: 1.05rem; }
+  main { max-width: 900px; margin: -34px auto 40px; padding: 0 16px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  .full { grid-column: 1 / -1; }
+  label { display: block; font-weight: 600; font-size: 0.92rem; margin-bottom: 6px; }
+  label small { font-weight: 400; color: var(--muted); }
+  input, select {
+    width: 100%;
+    padding: 11px 12px;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+  }
+  input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 91, 219, 0.2); }
+  .key-row { display: flex; gap: 8px; }
+  .key-row input { flex: 1; }
+  .ghost {
+    background: transparent; color: var(--primary); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0 14px; cursor: pointer; font-size: 0.9rem;
+  }
+  .hint { font-size: 0.82rem; color: var(--muted); margin-top: 5px; }
+  .hint a { color: var(--primary); }
+  button.primary {
+    width: 100%;
+    padding: 14px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--primary);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.15s, transform 0.05s;
+  }
+  button.primary:hover { background: var(--primary-dark); }
+  button.primary:active { transform: translateY(1px); }
+  button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  #loading { display: none; text-align: center; padding: 28px 16px; color: var(--muted); }
+  .spinner {
+    width: 38px; height: 38px; margin: 0 auto 12px;
+    border: 4px solid var(--border); border-top-color: var(--primary);
+    border-radius: 50%; animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #error {
+    display: none; color: var(--err); background: rgba(201, 42, 42, 0.08);
+    border: 1px solid var(--err); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+  }
+  #summary { display: none; }
+  #summary h2, #results h2 { margin: 0 0 8px; font-size: 1.25rem; }
+  .result {
+    border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+    background: var(--card); margin-bottom: 14px; box-shadow: var(--shadow);
+  }
+  .result-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+  .result h3 { margin: 0; font-size: 1.12rem; }
+  .sub { color: var(--muted); font-size: 0.92rem; margin-top: 2px; }
+  .fit {
+    font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  .fit.high { background: rgba(18, 184, 134, 0.15); color: var(--accent); }
+  .fit.medium { background: rgba(242, 153, 74, 0.18); color: #e8890c; }
+  .fit.stretch { background: rgba(201, 42, 42, 0.12); color: var(--err); }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .chip {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 5px 10px; font-size: 0.85rem;
+  }
+  .chip b { color: var(--muted); font-weight: 600; }
+  .result p { margin: 8px 0; font-size: 0.95rem; }
+  .result h4 { margin: 12px 0 4px; font-size: 0.9rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+  .result ul { margin: 4px 0 0 18px; padding: 0; font-size: 0.93rem; }
+  .link-btn {
+    display: inline-block; margin-top: 12px; color: var(--primary); font-weight: 600;
+    text-decoration: none; font-size: 0.92rem;
+  }
+  .link-btn:hover { text-decoration: underline; }
+  .notice {
+    background: var(--warn-bg); border: 1px solid var(--warn-border);
+    border-radius: 12px; padding: 14px 16px; font-size: 0.9rem;
+  }
+  footer { text-align: center; color: var(--muted); font-size: 0.82rem; padding: 0 16px 36px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌍 StudyGlobe AI</h1>
+  <p>Personalized study-abroad course, university &amp; scholarship finder for Indian students</p>
+</header>
+
+<main>
+  <form id="form" class="card" autocomplete="off">
+    <div class="grid">
+      <div class="full">
+        <label for="apiKey">Google Gemini API Key <small>(free key from aistudio.google.com)</small></label>
+        <div class="key-row">
+          <input type="password" id="apiKey" placeholder="Paste your Gemini API key" required>
+          <button type="button" class="ghost" id="toggleKey">Show</button>
+        </div>
+        <div class="hint">Your key stays in your browser and is sent only to Google's Gemini API.
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get a free key</a></div>
+      </div>
+
+      <div>
+        <label for="level">Current Education Level</label>
+        <select id="level" required>
+          <option value="Class 12 (completed or appearing)">Class 12 (completed / appearing)</option>
+          <option value="Final-year Bachelor's student">Final-year Bachelor's student</option>
+          <option value="Bachelor's graduate">Bachelor's graduate</option>
+          <option value="Working professional">Working professional</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="degree">Want to Study</label>
+        <select id="degree" required>
+          <option value="Bachelor's degree">Bachelor's degree</option>
+          <option value="Master's degree" selected>Master's degree</option>
+          <option value="MBA">MBA</option>
+          <option value="PhD / Research">PhD / Research</option>
+          <option value="Diploma / Short course">Diploma / Short course</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="field">Field of Interest</label>
+        <select id="field" required>
+          <option>Computer Science / AI / Data Science</option>
+          <option>Engineering (Mechanical / Civil / Electrical)</option>
+          <option>Business / Management / Finance</option>
+          <option>Medicine / Public Health / Biotech</option>
+          <option>Design / Architecture / Arts</option>
+          <option>Law / Social Sciences / Humanities</option>
+          <option>Hospitality / Culinary</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="country">Preferred Country</label>
+        <select id="country" required>
+          <option value="Any (suggest best options)">Any — suggest best options</option>
+          <option>USA</option>
+          <option>Canada</option>
+          <option>United Kingdom</option>
+          <option>Germany</option>
+          <option>Australia</option>
+          <option>Ireland</option>
+          <option>France</option>
+          <option>Netherlands</option>
+          <option>Singapore</option>
+          <option>New Zealand</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="score">Academic Score <small>(percentage / CGPA equivalent)</small></label>
+        <select id="score" required>
+          <option>Below 60%</option>
+          <option selected>60% – 70%</option>
+          <option>70% – 80%</option>
+          <option>80% – 90%</option>
+          <option>Above 90%</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="exam">English / Entrance Exam Status</label>
+        <select id="exam" required>
+          <option>Not taken any exam yet</option>
+          <option>IELTS 6.0 – 6.5</option>
+          <option>IELTS 7.0+</option>
+          <option>TOEFL 80 – 100</option>
+          <option>TOEFL 100+</option>
+          <option>GRE / GMAT taken, good score</option>
+          <option>Duolingo English Test</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="budget">Yearly Budget (tuition + living)</label>
+        <select id="budget" required>
+          <option>Below ₹10 lakh</option>
+          <option selected>₹10 – 20 lakh</option>
+          <option>₹20 – 35 lakh</option>
+          <option>₹35 – 50 lakh</option>
+          <option>Above ₹50 lakh</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="funding">Funding Plan</label>
+        <select id="funding" required>
+          <option>Self / family funded</option>
+          <option selected>Education loan + need scholarships</option>
+          <option>Scholarship essential</option>
+        </select>
+      </div>
+
+      <div class="full">
+        <label for="notes">Anything else? <small>(optional: work experience, backlogs, preferred city, intake…)</small></label>
+        <input type="text" id="notes" maxlength="300" placeholder="e.g. 2 years of work experience, want Fall 2027 intake, interested in a post-study work visa">
+      </div>
+    </div>
+
+    <button type="submit" class="primary" id="submitBtn">Find Courses, Universities &amp; Scholarships</button>
+    <details style="margin-top:14px">
+      <summary style="cursor:pointer;color:var(--muted);font-size:0.88rem">Advanced</summary>
+      <div style="margin-top:10px">
+        <label for="model">Gemini model name</label>
+        <input type="text" id="model" value="gemini-3.8-flash">
+        <div class="hint">Change this if Google retires or renames the default model.</div>
+      </div>
+    </details>
+  </form>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    🔍 Searching universities, courses &amp; scholarships via Gemini AI…
+  </div>
+
+  <div id="error"></div>
+
+  <div id="summary" class="card"></div>
+  <div id="results"></div>
+
+  <div class="notice">
+    <b>Verification Note:</b> AI suggestions can be outdated or inaccurate. Always confirm fees, deadlines,
+    entry requirements and visa rules on the official university website and the destination country's
+    official education or immigration portal before applying.
+  </div>
+</main>
+
+<footer>StudyGlobe AI · Built with Google Gemini · For guidance only, not professional counselling</footer>
+
+<script>
+(function () {
+  var form = document.getElementById('form');
+  var keyInput = document.getElementById('apiKey');
+  var toggleKey = document.getElementById('toggleKey');
+  var loading = document.getElementById('loading');
+  var errorBox = document.getElementById('error');
+  var summaryBox = document.getElementById('summary');
+  var resultsBox = document.getElementById('results');
+  var submitBtn = document.getElementById('submitBtn');
+
+  // Restore saved key (per-browser convenience only)
+  try {
+    var saved = localStorage.getItem('studyglobe_key');
+    if (saved) keyInput.value = saved;
+  } catch (e) {}
+
+  toggleKey.addEventListener('click', function () {
+    var show = keyInput.type === 'password';
+    keyInput.type = show ? 'text' : 'password';
+    toggleKey.textContent = show ? 'Hide' : 'Show';
+  });
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = 'block';
+  }
+
+  function buildPrompt(p) {
+    return [
+      'You are an expert study-abroad counsellor for Indian students.',
+      'Based on the student profile below, recommend 6 realistic study options (course + university + country).',
+      'Mix ambitious, moderate and safe options, and respect the stated budget and funding plan.',
+      'Include real, well-known scholarships the student may qualify for (for example Chevening, DAAD, Fulbright-Nehru, Commonwealth, Erasmus Mundus, Australia Awards, university-specific awards, Indian govt schemes like National Overseas Scholarship) only when they genuinely fit.',
+      'Be honest when something is uncertain. Do not invent scholarships. Give approximate costs in INR lakh per year.',
+      '',
+      'STUDENT PROFILE',
+      '- Current level: ' + p.level,
+      '- Wants to study: ' + p.degree,
+      '- Field: ' + p.field,
+      '- Preferred country: ' + p.country,
+      '- Academic score: ' + p.score,
+      '- Exam status: ' + p.exam,
+      '- Yearly budget: ' + p.budget,
+      '- Funding plan: ' + p.funding,
+      '- Extra notes: ' + (p.notes || 'None'),
+      '',
+      'Respond ONLY with valid JSON in exactly this shape:',
+      '{',
+      '  "summary": "2-3 sentence overview of the student\'s chances and the best strategy",',
+      '  "options": [',
+      '    {',
+      '      "course": "course / program name",',
+      '      "university": "university name",',
+      '      "country": "country",',
+      '      "fit": "High" | "Medium" | "Stretch",',
+      '      "duration": "e.g. 2 years",',
+      '      "estimated_cost_inr_lakh_per_year": "e.g. 18-25",',
+      '      "why_it_fits": "1-2 sentences",',
+      '      "entry_requirements": ["short bullet", "short bullet"],',
+      '      "scholarships": ["scholarship name and one-line note"],',
+      '      "next_steps": ["short action", "short action"]',
+      '    }',
+      '  ],',
+      '  "general_tips": ["tip", "tip", "tip"]',
+      '}'
+    ].join('\n');
+  }
+
+  function renderList(items) {
+    if (!Array.isArray(items) || !items.length) return '';
+    return '<ul>' + items.map(function (i) { return '<li>' + esc(i) + '</li>'; }).join('') + '</ul>';
+  }
+
+  function render(data) {
+    var html = '';
+    if (data.summary) {
+      html += '<h2>🎯 Your Study-Abroad Snapshot</h2><p style="margin:0">' + esc(data.summary) + '</p>';
+    }
+    if (Array.isArray(data.general_tips) && data.general_tips.length) {
+      html += '<h4 style="margin:14px 0 4px;color:var(--muted);font-size:.9rem;text-transform:uppercase">Quick tips</h4>' +
+        renderList(data.general_tips);
+    }
+    summaryBox.innerHTML = html;
+    summaryBox.style.display = html ? 'block' : 'none';
+
+    var opts = Array.isArray(data.options) ? data.options : [];
+    var out = opts.length ? '<h2 style="margin:6px 4px 12px">Recommended Options</h2>' : '';
+    opts.forEach(function (o) {
+      var fit = String(o.fit || 'Medium');
+      var cls = /high/i.test(fit) ? 'high' : (/stretch|reach|ambitious/i.test(fit) ? 'stretch' : 'medium');
+      var q = encodeURIComponent((o.university || '') + ' ' + (o.course || '') + ' official admissions');
+      out += '<div class="result">' +
+        '<div class="result-top"><div>' +
+          '<h3>' + esc(o.course) + '</h3>' +
+          '<div class="sub">' + esc(o.university) + ' · ' + esc(o.country) + '</div>' +
+        '</div><span class="fit ' + cls + '">' + esc(fit) + ' match</span></div>' +
+        '<div class="meta">' +
+          (o.duration ? '<span class="chip"><b>Duration:</b> ' + esc(o.duration) + '</span>' : '') +
+          (o.estimated_cost_inr_lakh_per_year ? '<span class="chip"><b>Est. cost:</b> ₹' + esc(o.estimated_cost_inr_lakh_per_year) + ' lakh/yr</span>' : '') +
+        '</div>' +
+        (o.why_it_fits ? '<p>' + esc(o.why_it_fits) + '</p>' : '') +
+        (o.entry_requirements && o.entry_requirements.length ? '<h4>Entry requirements</h4>' + renderList(o.entry_requirements) : '') +
+        (o.scholarships && o.scholarships.length ? '<h4>Scholarships to explore</h4>' + renderList(o.scholarships) : '') +
+        (o.next_steps && o.next_steps.length ? '<h4>Next steps</h4>' + renderList(o.next_steps) : '') +
+        '<a class="link-btn" target="_blank" rel="noopener" href="https://www.google.com/search?q=' + q + '">Find official page ↗</a>' +
+      '</div>';
+    });
+    resultsBox.innerHTML = out;
+  }
+
+  function parseJson(text) {
+    try { return JSON.parse(text); } catch (e) {}
+    var m = text.match(/\{[\s\S]*\}/);
+    if (m) { try { return JSON.parse(m[0]); } catch (e2) {} }
+    return null;
+  }
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    errorBox.style.display = 'none';
+    summaryBox.style.display = 'none';
+    resultsBox.innerHTML = '';
+
+    var key = keyInput.value.trim();
+    if (!key) { showError('Please paste your Gemini API key.'); return; }
+    try { localStorage.setItem('studyglobe_key', key); } catch (e) {}
+
+    var profile = {
+      level: document.getElementById('level').value,
+      degree: document.getElementById('degree').value,
+      field: document.getElementById('field').value,
+      country: document.getElementById('country').value,
+      score: document.getElementById('score').value,
+      exam: document.getElementById('exam').value,
+      budget: document.getElementById('budget').value,
+      funding: document.getElementById('funding').value,
+      notes: document.getElementById('notes').value.trim()
+    };
+    var model = document.getElementById('model').value.trim() || 'gemini-3.8-flash';
+
+    loading.style.display = 'block';
+    submitBtn.disabled = true;
+
+    fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: buildPrompt(profile) }] }],
+        generationConfig: { temperature: 0.5, responseMimeType: 'application/json' }
+      })
+    })
+    .then(function (res) {
+      return res.json().then(function (body) { return { ok: res.ok, status: res.status, body: body }; });
+    })
+    .then(function (r) {
+      if (!r.ok) {
+        var msg = (r.body && r.body.error && r.body.error.message) || ('Request failed (' + r.status + ')');
+        if (r.status === 400 || r.status === 403) msg += ' — check that your API key is valid.';
+        if (r.status === 404 || /no longer available|not found/i.test(msg)) msg += ' — the model may have been retired; open Advanced and enter the model name Google recommends.';
+        if (r.status === 429) msg += ' — rate limit reached; wait a minute and retry.';
+        throw new Error(msg);
+      }
+      var cand = r.body.candidates && r.body.candidates[0];
+      var parts = cand && cand.content && cand.content.parts;
+      var text = parts ? parts.map(function (p) { return p.text || ''; }).join('') : '';
+      var data = parseJson(text);
+      if (!data || !Array.isArray(data.options)) throw new Error('The AI returned an unexpected response. Please try again.');
+      render(data);
+      resultsBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    })
+    .catch(function (err) {
+      showError(err && err.message ? err.message : 'Something went wrong. Please try again.');
+    })
+    .then(function () {
+      loading.style.display = 'none';
+      submitBtn.disabled = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>
